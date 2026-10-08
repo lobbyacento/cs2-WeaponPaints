@@ -20,13 +20,30 @@ if (isset($_SESSION['steamid'])) {
 	$selectedSkins = UtilsClass::getSelectedSkins($querySelected);
 	$selectedKnife = $db->select("SELECT * FROM `wp_player_knife` WHERE `wp_player_knife`.`steamid` = :steamid LIMIT 1", ["steamid" => $steamid]);
 	$knifes = UtilsClass::getKnifeTypes();
+	$knifeDefindexes = array_keys(array_filter($knifes, fn($k, $i) => $i !== 0, ARRAY_FILTER_USE_BOTH));
 
 	if (isset($_POST['forma'])) {
 		$ex = explode("-", $_POST['forma']);
 
 		if ($ex[0] == "knife") {
-			$db->query("INSERT INTO `wp_player_knife` (`steamid`, `knife`, `weapon_team`) VALUES(:steamid, :knife, 2) ON DUPLICATE KEY UPDATE `knife` = :knife", ["steamid" => $steamid, "knife" => $knifes[$ex[1]]['weapon_name']]);
-			$db->query("INSERT INTO `wp_player_knife` (`steamid`, `knife`, `weapon_team`) VALUES(:steamid, :knife, 3) ON DUPLICATE KEY UPDATE `knife` = :knife", ["steamid" => $steamid, "knife" => $knifes[$ex[1]]['weapon_name']]);
+			$knifeDefindex = (int) $ex[1];
+			$db->query("INSERT INTO `wp_player_knife` (`steamid`, `knife`, `weapon_team`) VALUES(:steamid, :knife, 2) ON DUPLICATE KEY UPDATE `knife` = :knife", ["steamid" => $steamid, "knife" => $knifes[$knifeDefindex]['weapon_name']]);
+			$db->query("INSERT INTO `wp_player_knife` (`steamid`, `knife`, `weapon_team`) VALUES(:steamid, :knife, 3) ON DUPLICATE KEY UPDATE `knife` = :knife", ["steamid" => $steamid, "knife" => $knifes[$knifeDefindex]['weapon_name']]);
+			header("Location: {$_SERVER['PHP_SELF']}?knife={$knifeDefindex}");
+			exit;
+		} elseif ($ex[0] == "knifeskin") {
+			$defindex = (int) $ex[1];
+			$paintId = (int) $ex[2];
+			$wear = 0.0;
+			$seed = 0;
+			if (array_key_exists($defindex, $selectedSkins)) {
+				$db->query("UPDATE wp_player_skins SET weapon_paint_id = :weapon_paint_id, weapon_wear = :weapon_wear, weapon_seed = :weapon_seed WHERE steamid = :steamid AND weapon_defindex = :weapon_defindex", ["steamid" => $steamid, "weapon_defindex" => $defindex, "weapon_paint_id" => $paintId, "weapon_wear" => $wear, "weapon_seed" => $seed]);
+			} else {
+				$db->query("INSERT INTO wp_player_skins (`steamid`, `weapon_defindex`, `weapon_paint_id`, `weapon_wear`, `weapon_seed`, `weapon_team`) VALUES (:steamid, :weapon_defindex, :weapon_paint_id, :weapon_wear, :weapon_seed, 2)", ["steamid" => $steamid, "weapon_defindex" => $defindex, "weapon_paint_id" => $paintId, "weapon_wear" => $wear, "weapon_seed" => $seed]);
+				$db->query("INSERT INTO wp_player_skins (`steamid`, `weapon_defindex`, `weapon_paint_id`, `weapon_wear`, `weapon_seed`, `weapon_team`) VALUES (:steamid, :weapon_defindex, :weapon_paint_id, :weapon_wear, :weapon_seed, 3)", ["steamid" => $steamid, "weapon_defindex" => $defindex, "weapon_paint_id" => $paintId, "weapon_wear" => $wear, "weapon_seed" => $seed]);
+			}
+			header("Location: {$_SERVER['PHP_SELF']}");
+			exit;
 		} else {
 			if (array_key_exists($ex[1], $skins[$ex[0]]) && isset($_POST['wear']) && $_POST['wear'] >= 0.00 && $_POST['wear'] <= 1.00 && isset($_POST['seed'])) {
 				$wear = floatval($_POST['wear']); // wear
@@ -72,6 +89,47 @@ if (isset($_SESSION['steamid'])) {
 	</main>
 	<?php
 	} else {
+		$actualKnife = $knifes[0];
+		$actualKnifeDefindex = 0;
+		if ($selectedKnife != null) {
+			foreach ($knifes as $knifeKey => $knife) {
+				if ($selectedKnife[0]['knife'] == $knife['weapon_name']) {
+					$actualKnife = $knife;
+					$actualKnifeDefindex = $knifeKey;
+					break;
+				}
+			}
+		}
+
+		$knifePickerDefindex = isset($_GET['knife']) ? (int) $_GET['knife'] : null;
+		if ($knifePickerDefindex !== null && isset($knifes[$knifePickerDefindex]) && isset($skins[$knifePickerDefindex])) {
+	?>
+	<header class="site-header">
+		<div class="header-row">
+			<div>
+				<h1><?php echo htmlspecialchars($knifes[$knifePickerDefindex]['paint_name']); ?></h1>
+				<div class="sub">Escolha a skin da faca</div>
+			</div>
+			<a class="btn btn-logout" href="<?php echo $_SERVER['PHP_SELF']; ?>">Voltar</a>
+		</div>
+	</header>
+	<main class="loadout-wrap">
+		<div class="skin-picker-grid">
+			<?php foreach ($skins[$knifePickerDefindex] as $paintKey => $paint) {
+				$isSelected = isset($selectedSkins[$knifePickerDefindex]) && (int) $selectedSkins[$knifePickerDefindex]['weapon_paint_id'] === (int) $paintKey;
+			?>
+			<form action="" method="POST" class="skin-picker-item<?php echo $isSelected ? ' is-selected' : ''; ?>">
+				<input type="hidden" name="forma" value="knifeskin-<?php echo $knifePickerDefindex; ?>-<?php echo $paintKey; ?>">
+				<button type="submit" class="skin-picker-btn">
+					<img src="<?php echo htmlspecialchars($paint['image_url']); ?>" alt="" class="skin-image">
+					<span class="skin-picker-name"><?php echo htmlspecialchars($paint['paint_name']); ?></span>
+				</button>
+			</form>
+			<?php } ?>
+		</div>
+	</main>
+	<?php
+		} else {
 	?>
 	<header class="site-header">
 		<div class="header-row">
@@ -86,47 +144,49 @@ if (isset($_SESSION['steamid'])) {
 		<div class="loadout-grid">
 
 		<div class="col-sm-2">
-			<div class="card text-center mb-3">
+			<div class="card text-center mb-3 knife-card">
 				<div class="card-body">
 					<?php
-					$actualKnife = $knifes[0];
-					if ($selectedKnife != null)
-					{
-						foreach ($knifes as $knife) {
-							if ($selectedKnife[0]['knife'] == $knife['weapon_name']) {
-								$actualKnife = $knife;
-								break;
-							}
+					$knifeSkin = null;
+					if ($actualKnifeDefindex && isset($selectedSkins[$actualKnifeDefindex])) {
+						$paintId = $selectedSkins[$actualKnifeDefindex]['weapon_paint_id'];
+						if (isset($skins[$actualKnifeDefindex][$paintId])) {
+							$knifeSkin = $skins[$actualKnifeDefindex][$paintId];
 						}
 					}
 
 					echo "<div class='card-header'>";
-					echo "<h6 class='card-title item-name'>Knife type</h6>";
-					echo "<h5 class='card-title item-name'>{$actualKnife["paint_name"]}</h5>";
+					echo "<h6 class='card-title item-name'>Faca</h6>";
+					echo "<h5 class='card-title item-name'>" . htmlspecialchars($knifeSkin['paint_name'] ?? $actualKnife['paint_name']) . "</h5>";
 					echo "</div>";
-					echo "<img src='{$actualKnife["image_url"]}' class='skin-image'>";
+					echo "<img src='" . htmlspecialchars($knifeSkin['image_url'] ?? $actualKnife['image_url']) . "' class='skin-image'>";
 					?>
 				</div>
-				<div class="card-footer">
+				<div class="card-footer knife-footer">
 					<form action="" method="POST">
-						<select name="forma" class="form-control select" onchange="this.form.submit()" class="SelectWeapon">
-							<option disabled>Select knife</option>
+						<select name="forma" class="form-control select" onchange="this.form.submit()">
+							<option disabled>Tipo de faca</option>
 							<?php
 							foreach ($knifes as $knifeKey => $knife) {
-								if ($selectedKnife[0]['knife'] == $knife['weapon_name'])
-									echo "<option selected value=\"knife-{$knifeKey}\">{$knife['paint_name']}</option>";
-								else
-									echo "<option value=\"knife-{$knifeKey}\">{$knife['paint_name']}</option>";
+								$selected = ($selectedKnife && $selectedKnife[0]['knife'] == $knife['weapon_name']) ? ' selected' : '';
+								echo "<option{$selected} value=\"knife-{$knifeKey}\">" . htmlspecialchars($knife['paint_name']) . "</option>";
 							}
 							?>
 						</select>
 					</form>
+					<?php if ($actualKnifeDefindex && isset($skins[$actualKnifeDefindex])) { ?>
+					<a class="btn btn-primary btn-block knife-skin-link" href="<?php echo $_SERVER['PHP_SELF']; ?>?knife=<?php echo $actualKnifeDefindex; ?>">Escolher skin</a>
+					<?php } ?>
 				</div>
 			</div>
 		</div>
 
 		<?php
-		foreach ($weapons as $defindex => $default) { ?>
+		foreach ($weapons as $defindex => $default) {
+			if (in_array($defindex, $knifeDefindexes, true)) {
+				continue;
+			}
+		?>
 			<div class="col-sm-2">
 				<div class="card text-center mb-3">
 					<div class="card-body">
@@ -269,8 +329,10 @@ if (isset($_SESSION['steamid'])) {
 				}
 			</script>
 		<?php } ?>
-	<?php } ?>
-	<?php if (isset($_SESSION['steamid'])) { echo '</div></main>'; } ?>
+		</div></main>
+	<?php
+		}
+	} ?>
 	<footer class="site-footer">
 		WeaponPaints · <a href="https://github.com/Nereziel/cs2-WeaponPaints">Nereziel</a>
 	</footer>
