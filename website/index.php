@@ -54,23 +54,39 @@ if (isset($_SESSION['steamid'])) {
 	<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js"></script>
 	<link rel="stylesheet" href="style.css">
-	<title>CS2 Simple Weapon Paints</title>
+	<title>CS2 Skins</title>
 </head>
 
 <body>
 
 	<?php
 	if (!isset($_SESSION['steamid'])) {
-		echo "<div class='bg-primary'><h2>To choose weapon paints loadout, you need to ";
-		loginbutton("rectangle");
-		echo "</h2></div>";
-	} else {
-		echo "<div class='bg-primary'><h2>Your current weapon skin loadout <a class='btn btn-danger' href='{$_SERVER['PHP_SELF']}?logout'>Logout</a></h2> </div>";
-		echo "<div class='card-group mt-2'>";
 	?>
+	<header class="site-header">
+		<h1>CS2 Skins</h1>
+		<div class="sub">Painel de loadout</div>
+	</header>
+	<main class="login-panel">
+		<p>Entre com Steam para configurar suas skins.<br>No servidor use <code>!wp</code> ou <code>!skins</code>.</p>
+		<?php loginbutton("rectangle"); ?>
+	</main>
+	<?php
+	} else {
+	?>
+	<header class="site-header">
+		<div class="header-row">
+			<div>
+				<h1>Loadout</h1>
+				<div class="sub">Skins aplicam ao entrar no servidor</div>
+			</div>
+			<a class="btn btn-logout" href="<?php echo $_SERVER['PHP_SELF']; ?>?logout">Sair</a>
+		</div>
+	</header>
+	<main class="loadout-wrap">
+		<div class="loadout-grid">
 
 		<div class="col-sm-2">
-			<div class="card text-center mb-3 border border-primary">
+			<div class="card text-center mb-3">
 				<div class="card-body">
 					<?php
 					$actualKnife = $knifes[0];
@@ -254,15 +270,10 @@ if (isset($_SESSION['steamid'])) {
 			</script>
 		<?php } ?>
 	<?php } ?>
-	</div>
-	</div>
-	<div class="container">
-		<footer class="d-flex flex-wrap justify-content-between align-items-center py-3 my-4 border-top">
-			<div class="col-md-4 d-flex align-items-center">
-				<span class="mb-3 mb-md-0 text-body-secondary">© 2023 <a href="https://github.com/Nereziel/cs2-WeaponPaints">Nereziel/cs2-WeaponPaints</a></span>
-			</div>
-		</footer>
-	</div>
+	<?php if (isset($_SESSION['steamid'])) { echo '</div></main>'; } ?>
+	<footer class="site-footer">
+		WeaponPaints · <a href="https://github.com/Nereziel/cs2-WeaponPaints">Nereziel</a>
+	</footer>
 </body>
 
 </html>
