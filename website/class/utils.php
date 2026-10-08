@@ -4,7 +4,7 @@ class UtilsClass
     public static function skinsFromJson(): array
     {
         $skins = [];
-        $json = json_decode(file_get_contents(__DIR__ . "/../data/".SKIN_LANGUAGE.".json"), true);
+        $json = json_decode(file_get_contents(__DIR__ . "/../data/" . SKIN_LANGUAGE . ".json"), true);
 
         foreach ($json as $skin) {
             $skins[(int) $skin['weapon_defindex']][(int) $skin['paint']] = [
@@ -23,8 +23,9 @@ class UtilsClass
         $temp = self::skinsFromJson();
 
         foreach ($temp as $key => $value) {
-            if (key_exists($key, $weapons))
+            if (key_exists($key, $weapons)) {
                 continue;
+            }
 
             $weapons[$key] = [
                 'weapon_name' => $value[0]['weapon_name'],
@@ -63,10 +64,11 @@ class UtilsClass
                     522,
                     523,
                     525,
-                    526
+                    526,
                 ])
-            )
+            ) {
                 continue;
+            }
 
             $knifes[$key] = [
                 'weapon_name' => $weapon['weapon_name'],
@@ -89,7 +91,7 @@ class UtilsClass
         $selected = [];
 
         foreach ($temp as $weapon) {
-            $selected[$weapon['weapon_defindex']] =  [
+            $selected[$weapon['weapon_defindex']] = [
                 'weapon_paint_id' => $weapon['weapon_paint_id'],
                 'weapon_seed' => $weapon['weapon_seed'],
                 'weapon_wear' => $weapon['weapon_wear'],
@@ -97,5 +99,16 @@ class UtilsClass
         }
 
         return $selected;
+    }
+
+    public static function getKnifeDefindexByName(string $weaponName): ?int
+    {
+        foreach (self::getKnifeTypes() as $defindex => $knife) {
+            if ($knife['weapon_name'] === $weaponName) {
+                return (int) $defindex;
+            }
+        }
+
+        return null;
     }
 }
